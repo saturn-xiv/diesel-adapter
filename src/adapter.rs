@@ -23,7 +23,17 @@ pub struct DieselAdapter {
 pub const TABLE_NAME: &str = "casbin_rule";
 
 impl DieselAdapter {
-    pub fn new<U: Into<String>>(url: U, pool_size: u32) -> Result<Self> {
+    pub fn new(pool: Pool<ConnectionManager<adapter::Connection>>) -> Result<Self> {
+        let conn = pool
+            .get()
+            .map_err(|err| CasbinError::from(AdapterError(Box::new(Error::PoolError(err)))));
+
+        adapter::new(conn).map(|_| Self {
+            pool,
+            is_filtered: false,
+        })
+    }
+    pub fn open<U: Into<String>>(url: U, pool_size: u32) -> Result<Self> {
         let manager = ConnectionManager::new(url);
         let pool = Pool::builder()
             .connection_timeout(Duration::from_secs(10))
